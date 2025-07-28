@@ -1,9 +1,10 @@
-import dotenv from "dotenv";
+
 import chalk from "chalk";
 import figlet from "figlet";
 import app from "./app.js";
-
+import dotenv from 'dotenv';
 dotenv.config();
+
 const PORT = process.env.PORT ;
 
 app.listen(PORT, () => {
