@@ -8,6 +8,13 @@
       "when": 1753540150557,
       "tag": "0000_cold_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1753776121829,
+      "tag": "0001_last_leopardon",
+      "breakpoints": true
     }
   ]
 }
