@@ -144,4 +144,37 @@ export const getSessionStats = async (req, res) => {
     } catch (error) {
         return sendResponse(res, 500, error.message, null);
     }
+};
+
+export const getSessionMessages = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const messages = await SessionService.getSessionMessages(parseInt(sessionId), userId);
+    return sendResponse(res, 200, 'Messages retrieved successfully', messages);
+  } catch (error) {
+    return sendResponse(res, 500, error.message, null);
+  }
+};
+
+export const getSessionComponents = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const components = await SessionService.getSessionComponents(parseInt(sessionId), userId);
+    return sendResponse(res, 200, 'Components retrieved successfully', components);
+  } catch (error) {
+    return sendResponse(res, 500, error.message, null);
+  }
+};
+
+export const getSessionInteractions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const interactions = await SessionService.getSessionInteractions(parseInt(sessionId), userId);
+    return sendResponse(res, 200, 'Interactions retrieved successfully', interactions);
+  } catch (error) {
+    return sendResponse(res, 500, error.message, null);
+  }
 }; 

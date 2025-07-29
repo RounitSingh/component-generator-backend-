@@ -6,7 +6,6 @@ export const users = pgTable('users', {
     email: varchar('email', { length: 255 }).notNull().unique(),
     password: varchar('password', { length: 255 }).notNull(),
     name: varchar('name', { length: 255 }),
-    avatar_url: varchar('avatar_url', { length: 500 }),
     is_verified: boolean('is_verified').default(false),
     created_at: timestamp('created_at').defaultNow(),
     updated_at: timestamp('updated_at').defaultNow(),
@@ -27,7 +26,7 @@ export const chatMessages = pgTable('chat_messages', {
     session_id: integer('session_id').references(() => sessions.id, { onDelete: 'cascade' }).notNull(),
     role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
     content: text('content').notNull(),
-    message_type: varchar('message_type', { length: 20 }).default('text'), // 'text', 'image', 'code'
+    message_type: varchar('message_type', { length: 500 }).default('text'), // 'text', 'image', 'code'
     metadata: jsonb('metadata'), // For storing additional data like image URLs, code snippets, etc.
     created_at: timestamp('created_at').defaultNow(),
 });

@@ -297,4 +297,28 @@ export const getSessionStats = async (userId) => {
             total_interactions: totals.interactions,
         },
     };
+};
+
+export const getSessionMessages = async (sessionId, userId) => {
+  // Ensure the session belongs to the user
+  const session = await db.select().from(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.user_id, userId)));
+  if (!session.length) throw new Error('Session not found');
+  // Fetch messages
+  return await db.select().from(chatMessages).where(eq(chatMessages.session_id, sessionId)).orderBy(asc(chatMessages.created_at));
+};
+
+export const getSessionComponents = async (sessionId, userId) => {
+  // Ensure the session belongs to the user
+  const session = await db.select().from(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.user_id, userId)));
+  if (!session.length) throw new Error('Session not found');
+  // Fetch components
+  return await db.select().from(components).where(eq(components.session_id, sessionId)).orderBy(asc(components.created_at));
+};
+
+export const getSessionInteractions = async (sessionId, userId) => {
+  // Ensure the session belongs to the user
+  const session = await db.select().from(sessions).where(and(eq(sessions.id, sessionId), eq(sessions.user_id, userId)));
+  if (!session.length) throw new Error('Session not found');
+  // Fetch interactions
+  return await db.select().from(aiInteractions).where(eq(aiInteractions.session_id, sessionId)).orderBy(asc(aiInteractions.created_at));
 }; 

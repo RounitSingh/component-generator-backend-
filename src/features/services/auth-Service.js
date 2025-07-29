@@ -42,13 +42,18 @@ export const comparePassword = async (password, hashedPassword) =>
   await bcrypt.compare(password, hashedPassword);
 
 export const signup = async (userData) => {
+  console.log('Signup called with:', userData);
   try {
     const validatedData = signupSchema.parse(userData);
+    console.log('Validated data:', validatedData);
     const existingUser = await db.select().from(users).where(eq(users.email, validatedData.email));
+    console.log('Existing user query result:', existingUser);
     if (existingUser.length > 0) {
+      console.log('User with this email already exists:', validatedData.email);
       throw new Error('User with this email already exists');
     }
     const hashedPassword = await hashPassword(validatedData.password);
+    console.log('Password hashed');
     const [newUser] = await db.insert(users).values({
       email: validatedData.email,
       password: hashedPassword,
@@ -61,14 +66,17 @@ export const signup = async (userData) => {
       is_verified: users.is_verified,
       created_at: users.created_at,
     });
+    console.log('New user inserted:', newUser);
     const accessToken = generateToken({ userId: newUser.id, email: newUser.email });
     const { token: refreshToken, expiresAt } = generateRefreshToken(newUser.id);
+    console.log('Tokens generated:', { accessToken, refreshToken });
     await db.insert(userTokens).values({
       user_id: newUser.id,
       token: refreshToken,
       type: 'refresh',
       expires_at: expiresAt,
     });
+    console.log('Refresh token saved for user:', newUser.id);
     return {
       success: true,
       message: 'User registered successfully',
@@ -79,12 +87,13 @@ export const signup = async (userData) => {
       },
     };
   } catch (error) {
-   if (error instanceof z.ZodError) {
-  const messages = Array.isArray(error.errors)
-    ? error.errors.map(e => e.message).join(', ')
-    : error.message || 'Validation error';
-  throw new Error(`Validation error: ${messages}`);
-}
+    console.error('Error in signup:', error);
+    if (error instanceof z.ZodError) {
+      const messages = Array.isArray(error.errors)
+        ? error.errors.map(e => e.message).join(', ')
+        : error.message || 'Validation error';
+      throw new Error(`Validation error: ${messages}`);
+    }
     throw error;
   }
 };
@@ -218,7 +227,6 @@ export const getUserProfile = async (userId) => {
     id: users.id,
     email: users.email,
     name: users.name,
-    avatar_url: users.avatar_url,
     is_verified: users.is_verified,
     created_at: users.created_at,
     updated_at: users.updated_at,
@@ -234,7 +242,7 @@ export const getUserProfile = async (userId) => {
 
 export const updateUserProfile = async (userId, updateData) => {
   try {
-    const allowedFields = ['name', 'avatar_url'];
+    const allowedFields = ['name'];
     const filteredData = {};
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
@@ -252,7 +260,6 @@ export const updateUserProfile = async (userId, updateData) => {
         id: users.id,
         email: users.email,
         name: users.name,
-        avatar_url: users.avatar_url,
         is_verified: users.is_verified,
         created_at: users.created_at,
         updated_at: users.updated_at,

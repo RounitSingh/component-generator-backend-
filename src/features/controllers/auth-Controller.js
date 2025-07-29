@@ -2,11 +2,14 @@ import * as AuthService from '../services/auth-Service.js';
 import { sendResponse } from '../../utils/response.js';
 
 export const signup = async (req, res) => {
+  console.log('Received signup request:', req.body);
   try {
     const { email, password, name } = req.body;
     const result = await AuthService.signup({ email, password, name });
+    console.log('Signup successful, result:', result);
     return sendResponse(res, 201, result.message, result.data);
   } catch (error) {
+    console.error('Signup failed:', error);
     return sendResponse(res, 400, error.message, null);
   }
 };

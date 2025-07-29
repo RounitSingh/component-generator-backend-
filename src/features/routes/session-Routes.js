@@ -19,5 +19,8 @@ router.delete('/sessions/:sessionId', SessionController.deleteSession);
 router.post('/sessions/:sessionId/messages', SessionController.addChatMessage);
 router.post('/sessions/:sessionId/components', SessionController.saveComponent);
 router.post('/sessions/:sessionId/interactions', SessionController.saveAIInteraction);
+router.get('/sessions/:sessionId/messages', SessionController.getSessionMessages);
+router.get('/sessions/:sessionId/components', SessionController.getSessionComponents);
+router.get('/sessions/:sessionId/interactions', SessionController.getSessionInteractions);
 
 export default router; 
