@@ -177,4 +177,55 @@ export const getSessionInteractions = async (req, res) => {
   } catch (error) {
     return sendResponse(res, 500, error.message, null);
   }
+};
+
+export const saveAIResponse = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const { conversationId, userMessageId, promptText, responseText, modelName, responseTimeMs, tokensUsed, metadata } = req.body;
+    
+    if (!conversationId || !promptText || !responseText) {
+      return sendResponse(res, 400, 'Conversation ID, prompt text, and response text are required', null);
+    }
+    
+    const result = await SessionService.saveAIResponse(parseInt(sessionId), userId, {
+      conversationId,
+      userMessageId,
+      promptText,
+      responseText,
+      modelName,
+      responseTimeMs,
+      tokensUsed,
+      metadata,
+    });
+    return sendResponse(res, 201, result.message, result.data);
+  } catch (error) {
+    if (error.message === 'Session not found') {
+      return sendResponse(res, 404, error.message, null);
+    }
+    return sendResponse(res, 500, error.message, null);
+  }
+};
+
+export const getSessionAIResponses = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const responses = await SessionService.getSessionAIResponses(parseInt(sessionId), userId);
+    return sendResponse(res, 200, 'AI responses retrieved successfully', responses);
+  } catch (error) {
+    return sendResponse(res, 500, error.message, null);
+  }
+};
+
+export const getConversationSessions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { sessionId } = req.params;
+    const conversations = await SessionService.getConversationSessions(parseInt(sessionId), userId);
+    return sendResponse(res, 200, 'Conversation sessions retrieved successfully', conversations);
+  } catch (error) {
+    return sendResponse(res, 500, error.message, null);
+  }
 }; 
