@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable no-useless-catch */
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -62,10 +63,10 @@ export const comparePassword = async (password, hashedPassword) =>
   await bcrypt.compare(password, hashedPassword);
 
 export const signup = async (userData) => {
-  console.log('Signup called with:', userData);
+  // console.log('Signup called with:', userData);
   try {
     const validatedData = signupSchema.parse(userData);
-    console.log('Validated data:', validatedData);
+    // console.log('Validated data:', validatedData);
     
     // Check if user exists (with cache)
     const cacheKey = `user_email_${validatedData.email}`;
@@ -78,7 +79,7 @@ export const signup = async (userData) => {
     }
     
     if (existingUser) {
-      console.log('User with this email already exists:', validatedData.email);
+      // console.log('User with this email already exists:', validatedData.email);
       throw new Error('User with this email already exists');
     }
     
@@ -105,7 +106,7 @@ export const signup = async (userData) => {
       .where(eq(users.id, newUser[0].id));
     
     const user = { ...newUser[0], password: hashedPassword };
-    console.log('New user inserted:', user);
+    // console.log('New user inserted:', user);
     
     // Generate tokens and save refresh token in parallel
     const [accessToken, refreshTokenData] = await Promise.all([
@@ -113,7 +114,7 @@ export const signup = async (userData) => {
       generateRefreshToken(user.id)
     ]);
     
-    console.log('Tokens generated:', { accessToken, refreshToken: refreshTokenData.token });
+    // console.log('Tokens generated:', { accessToken, refreshToken: refreshTokenData.token });
     
     // Save refresh token
     await db.insert(userTokens).values({
@@ -123,7 +124,7 @@ export const signup = async (userData) => {
       expires_at: refreshTokenData.expiresAt,
     });
     
-    console.log('Refresh token saved for user:', user.id);
+    // console.log('Refresh token saved for user:', user.id);
     
     // Cache the new user
     setCachedValue(`user_email_${user.email}`, user);
@@ -144,7 +145,7 @@ export const signup = async (userData) => {
       },
     };
   } catch (error) {
-    console.error('Error in signup:', error);
+    // console.error('Error in signup:', error);
     if (error instanceof z.ZodError) {
       const messages = Array.isArray(error.errors)
         ? error.errors.map(e => e.message).join(', ')
@@ -285,7 +286,7 @@ export const logout = async (refreshToken) => {
       message: 'Logout successful',
     };
   } catch (error) {
-    console.error('Error during logout:', error);
+    // console.error('Error during logout:', error);
     throw new Error('Logout failed');
   }
 };
@@ -313,7 +314,7 @@ export const verifyToken = async (token) => {
       decoded,
     };
   } catch (error) {
-    console.error('Error verifying token:', error);
+    // console.error('Error verifying token:', error);
     throw new Error('Invalid token');
   }
 };
@@ -396,7 +397,7 @@ export const cleanupExpiredTokens = async () => {
       )
     );
   } catch (error) {
-    console.error('Error cleaning up expired tokens:', error);
+    // console.error('Error cleaning up expired tokens:', error);
   }
 };
 

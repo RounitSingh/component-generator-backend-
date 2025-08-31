@@ -4,14 +4,14 @@ import { performanceMonitor } from '../../utils/performance.js';
 
 export const signup = async (req, res) => {
   return performanceMonitor.measure('signup', async () => {
-    console.log('Received signup request:', req.body);
+    // console.log('Received signup request:', req.body);
     try {
       const { email, password, name } = req.body;
       const result = await AuthService.signup({ email, password, name });
-      console.log('Signup successful, result:', result);
+      // console.log('Signup successful, result:', result);
       return sendResponse(res, 201, result.message, result.data);
     } catch (error) {
-      console.error('Signup failed:', error);
+      // console.error('Signup failed:', error);
       return sendResponse(res, 400, error.message, null);
     }
   });

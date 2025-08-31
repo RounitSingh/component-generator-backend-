@@ -49,7 +49,7 @@ const updateSessionTimestamp = async (sessionId) => {
 
 // Helper function to verify session ownership
 const verifySessionOwnership = async (sessionId, userId) => {
-    console.log(`Verifying ownership: session ${sessionId}, user ${userId}`);
+    // console.log(`Verifying ownership: session ${sessionId}, user ${userId}`);
     const sessionResult = await db.select()
         .from(sessions)
         .where(and(
@@ -57,7 +57,7 @@ const verifySessionOwnership = async (sessionId, userId) => {
             eq(sessions.user_id, userId)
         ));
 
-    console.log(`Session ownership check result:`, sessionResult);
+    // console.log(`Session ownership check result:`, sessionResult);
     if (sessionResult.length === 0) {
         throw new Error('Session not found or access denied');
     }
@@ -348,14 +348,14 @@ export const saveComponent = async (sessionId, userId, componentData) => {
 
 export const saveAIInteraction = async (sessionId, userId, interactionData) => {
     try {
-        console.log(`Saving AI interaction for session ${sessionId} and user ${userId}`);
-        console.log('Interaction data:', interactionData);
+        // console.log(`Saving AI interaction for session ${sessionId} and user ${userId}`);
+        // console.log('Interaction data:', interactionData);
         
         await verifySessionOwnership(sessionId, userId);
-        console.log('Session ownership verified for interaction');
+        // console.log('Session ownership verified for interaction');
         
         const validatedData = interactionSchema.parse(interactionData);
-        console.log('Interaction data validated:', validatedData);
+        // console.log('Interaction data validated:', validatedData);
 
         // Generate conversation ID if not provided
         const conversationId = validatedData.conversationId || `conv_${sessionId}_${Date.now()}`;
@@ -371,7 +371,7 @@ export const saveAIInteraction = async (sessionId, userId, interactionData) => {
             metadata: validatedData.metadata || null,
         }).returning();
 
-        console.log('AI interaction saved successfully:', newInteraction);
+        // console.log('AI interaction saved successfully:', newInteraction);
 
         // Update session timestamp
         await updateSessionTimestamp(sessionId);
@@ -382,7 +382,7 @@ export const saveAIInteraction = async (sessionId, userId, interactionData) => {
             data: newInteraction,
         };
     } catch (error) {
-        console.error('Error in saveAIInteraction:', error);
+        // console.error('Error in saveAIInteraction:', error);
         if (error instanceof z.ZodError) {
             throw new Error(`Validation error: ${error.errors.map(e => e.message).join(', ')}`);
         }
@@ -478,18 +478,18 @@ export const getSessionMessages = async (sessionId, userId) => {
 
 export const getSessionComponents = async (sessionId, userId) => {
     try {
-        console.log(`Getting components for session ${sessionId} and user ${userId}`);
+        // console.log(`Getting components for session ${sessionId} and user ${userId}`);
         await verifySessionOwnership(sessionId, userId);
-        console.log('Session ownership verified, fetching components...');
+        // console.log('Session ownership verified, fetching components...');
         const sessionComponents = await db.select()
             .from(components)
             .where(eq(components.session_id, sessionId))
             .orderBy(asc(components.created_at));
         
-        console.log(`Found ${sessionComponents.length} components for session ${sessionId}`);
+        // console.log(`Found ${sessionComponents.length} components for session ${sessionId}`);
         return sessionComponents;
     } catch (error) {
-        console.error('Error in getSessionComponents:', error);
+        // console.error('Error in getSessionComponents:', error);
         throw new Error(`Failed to fetch session components: ${error.message}`);
     }
 };
