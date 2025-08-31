@@ -22,6 +22,26 @@ const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
 const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 const refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '30d';
 
+// In-memory cache for frequently accessed data (with TTL)
+const cache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const getCachedValue = (key) => {
+  const item = cache.get(key);
+  if (item && Date.now() < item.expiresAt) {
+    return item.value;
+  }
+  cache.delete(key);
+  return null;
+};
+
+const setCachedValue = (key, value, ttl = CACHE_TTL) => {
+  cache.set(key, {
+    value,
+    expiresAt: Date.now() + ttl,
+  });
+};
+
 export const generateToken = (payload, expiresIn = jwtExpiresIn) =>
   jwt.sign(payload, jwtSecret, { expiresIn });
 
@@ -46,44 +66,81 @@ export const signup = async (userData) => {
   try {
     const validatedData = signupSchema.parse(userData);
     console.log('Validated data:', validatedData);
-    const existingUser = await db.select().from(users).where(eq(users.email, validatedData.email));
-    console.log('Existing user query result:', existingUser);
-    if (existingUser.length > 0) {
+    
+    // Check if user exists (with cache)
+    const cacheKey = `user_email_${validatedData.email}`;
+    let existingUser = getCachedValue(cacheKey);
+    
+    if (!existingUser) {
+      const userResult = await db.select().from(users).where(eq(users.email, validatedData.email));
+      existingUser = userResult.length > 0 ? userResult[0] : null;
+      setCachedValue(cacheKey, existingUser, 2 * 60 * 1000); // Cache for 2 minutes
+    }
+    
+    if (existingUser) {
       console.log('User with this email already exists:', validatedData.email);
       throw new Error('User with this email already exists');
     }
-    const hashedPassword = await hashPassword(validatedData.password);
-    console.log('Password hashed');
-    const [newUser] = await db.insert(users).values({
-      email: validatedData.email,
-      password: hashedPassword,
-      name: validatedData.name,
-      is_verified: true,
-    }).returning({
-      id: users.id,
-      email: users.email,
-      name: users.name,
-      is_verified: users.is_verified,
-      created_at: users.created_at,
-    });
-    console.log('New user inserted:', newUser);
-    const accessToken = generateToken({ userId: newUser.id, email: newUser.email });
-    const { token: refreshToken, expiresAt } = generateRefreshToken(newUser.id);
-    console.log('Tokens generated:', { accessToken, refreshToken });
+    
+    // Hash password and create user in parallel
+    const [hashedPassword, newUser] = await Promise.all([
+      hashPassword(validatedData.password),
+      db.insert(users).values({
+        email: validatedData.email,
+        password: '', // Will be updated after hashing
+        name: validatedData.name,
+        is_verified: true,
+      }).returning({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        is_verified: users.is_verified,
+        created_at: users.created_at,
+      })
+    ]);
+    
+    // Update password with hashed version
+    await db.update(users)
+      .set({ password: hashedPassword })
+      .where(eq(users.id, newUser[0].id));
+    
+    const user = { ...newUser[0], password: hashedPassword };
+    console.log('New user inserted:', user);
+    
+    // Generate tokens and save refresh token in parallel
+    const [accessToken, refreshTokenData] = await Promise.all([
+      generateToken({ userId: user.id, email: user.email }),
+      generateRefreshToken(user.id)
+    ]);
+    
+    console.log('Tokens generated:', { accessToken, refreshToken: refreshTokenData.token });
+    
+    // Save refresh token
     await db.insert(userTokens).values({
-      user_id: newUser.id,
-      token: refreshToken,
+      user_id: user.id,
+      token: refreshTokenData.token,
       type: 'refresh',
-      expires_at: expiresAt,
+      expires_at: refreshTokenData.expiresAt,
     });
-    console.log('Refresh token saved for user:', newUser.id);
+    
+    console.log('Refresh token saved for user:', user.id);
+    
+    // Cache the new user
+    setCachedValue(`user_email_${user.email}`, user);
+    
     return {
       success: true,
       message: 'User registered successfully',
       data: {
-        user: newUser,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          is_verified: user.is_verified,
+          created_at: user.created_at,
+        },
         accessToken,
-        refreshToken,
+        refreshToken: refreshTokenData.token,
       },
     };
   } catch (error) {
@@ -101,27 +158,47 @@ export const signup = async (userData) => {
 export const login = async (credentials) => {
   try {
     const validatedData = loginSchema.parse(credentials);
-    const userResult = await db.select().from(users).where(eq(users.email, validatedData.email));
-    if (userResult.length === 0) {
-      throw new Error('User not found. Please sign up first.');
+    
+    // Check cache first
+    const cacheKey = `user_email_${validatedData.email}`;
+    let user = getCachedValue(cacheKey);
+    
+    if (!user) {
+      const userResult = await db.select().from(users).where(eq(users.email, validatedData.email));
+      if (userResult.length === 0) {
+        throw new Error('User not found. Please sign up first.');
+      }
+      user = userResult[0];
+      setCachedValue(cacheKey, user, 2 * 60 * 1000); // Cache for 2 minutes
     }
-    const user = userResult[0];
+    
     if (!user.is_verified) {
       throw new Error('Account is not verified. Please contact support or complete verification.');
     }
+    
+    // Verify password
     const isPasswordValid = await comparePassword(validatedData.password, user.password);
     if (!isPasswordValid) {
       throw new Error('Invalid password. Please try again.');
     }
-    const accessToken = generateToken({ userId: user.id, email: user.email });
-    const { token: refreshToken, expiresAt } = generateRefreshToken(user.id);
+    
+    // Generate tokens and save refresh token in parallel
+    const [accessToken, refreshTokenData] = await Promise.all([
+      generateToken({ userId: user.id, email: user.email }),
+      generateRefreshToken(user.id)
+    ]);
+    
+    // Save refresh token
     await db.insert(userTokens).values({
       user_id: user.id,
-      token: refreshToken,
+      token: refreshTokenData.token,
       type: 'refresh',
-      expires_at: expiresAt,
+      expires_at: refreshTokenData.expiresAt,
     });
-    await cleanupExpiredTokens();
+    
+    // Cleanup expired tokens in background (non-blocking)
+    setImmediate(() => cleanupExpiredTokens());
+    
     return {
       success: true,
       message: 'Login successful',
@@ -134,7 +211,7 @@ export const login = async (credentials) => {
           created_at: user.created_at,
         },
         accessToken,
-        refreshToken,
+        refreshToken: refreshTokenData.token,
       },
     };
   } catch (error) {
@@ -151,26 +228,35 @@ export const refreshToken = async (refreshToken) => {
     if (decoded.type !== 'refresh') {
       throw new Error('Invalid token type');
     }
-    const tokenResult = await db.select().from(userTokens).where(
-      and(
-        eq(userTokens.token, refreshToken),
-        eq(userTokens.type, 'refresh'),
-        eq(userTokens.is_revoked, false)
-      )
-    );
+    
+    // Check token validity and get user in parallel
+    const [tokenResult, userResult] = await Promise.all([
+      db.select().from(userTokens).where(
+        and(
+          eq(userTokens.token, refreshToken),
+          eq(userTokens.type, 'refresh'),
+          eq(userTokens.is_revoked, false)
+        )
+      ),
+      db.select().from(users).where(eq(users.id, decoded.userId))
+    ]);
+    
     if (tokenResult.length === 0) {
       throw new Error('Invalid refresh token');
     }
+    
     const tokenRecord = tokenResult[0];
     if (new Date() > tokenRecord.expires_at) {
       throw new Error('Refresh token expired');
     }
-    const userResult = await db.select().from(users).where(eq(users.id, decoded.userId));
+    
     if (userResult.length === 0) {
       throw new Error('User not found');
     }
+    
     const user = userResult[0];
     const newAccessToken = generateToken({ userId: user.id, email: user.email });
+    
     return {
       success: true,
       message: 'Token refreshed successfully',
@@ -207,13 +293,23 @@ export const logout = async (refreshToken) => {
 export const verifyToken = async (token) => {
   try {
     const decoded = jwt.verify(token, jwtSecret);
-    const userResult = await db.select().from(users).where(eq(users.id, decoded.userId));
-    if (userResult.length === 0) {
-      throw new Error('User not found');
+    
+    // Check cache first
+    const cacheKey = `user_id_${decoded.userId}`;
+    let user = getCachedValue(cacheKey);
+    
+    if (!user) {
+      const userResult = await db.select().from(users).where(eq(users.id, decoded.userId));
+      if (userResult.length === 0) {
+        throw new Error('User not found');
+      }
+      user = userResult[0];
+      setCachedValue(cacheKey, user, 5 * 60 * 1000); // Cache for 5 minutes
     }
+    
     return {
       success: true,
-      user: userResult[0],
+      user,
       decoded,
     };
   } catch (error) {
@@ -223,20 +319,31 @@ export const verifyToken = async (token) => {
 };
 
 export const getUserProfile = async (userId) => {
-  const userResult = await db.select({
-    id: users.id,
-    email: users.email,
-    name: users.name,
-    is_verified: users.is_verified,
-    created_at: users.created_at,
-    updated_at: users.updated_at,
-  }).from(users).where(eq(users.id, userId));
-  if (userResult.length === 0) {
-    throw new Error('User not found');
+  // Check cache first
+  const cacheKey = `user_id_${userId}`;
+  let user = getCachedValue(cacheKey);
+  
+  if (!user) {
+    const userResult = await db.select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      is_verified: users.is_verified,
+      created_at: users.created_at,
+      updated_at: users.updated_at,
+    }).from(users).where(eq(users.id, userId));
+    
+    if (userResult.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    user = userResult[0];
+    setCachedValue(cacheKey, user, 5 * 60 * 1000); // Cache for 5 minutes
   }
+  
   return {
     success: true,
-    data: userResult[0],
+    data: user,
   };
 };
 
@@ -253,6 +360,7 @@ export const updateUserProfile = async (userId, updateData) => {
       throw new Error('No valid fields to update');
     }
     filteredData.updated_at = new Date();
+    
     const [updatedUser] = await db.update(users)
       .set(filteredData)
       .where(eq(users.id, userId))
@@ -264,6 +372,11 @@ export const updateUserProfile = async (userId, updateData) => {
         created_at: users.created_at,
         updated_at: users.updated_at,
       });
+    
+    // Update cache
+    setCachedValue(`user_id_${userId}`, updatedUser);
+    setCachedValue(`user_email_${updatedUser.email}`, updatedUser);
+    
     return {
       success: true,
       message: 'Profile updated successfully',
@@ -289,27 +402,41 @@ export const cleanupExpiredTokens = async () => {
 
 export const changePassword = async (userId, currentPassword, newPassword) => {
   try {
-    const userResult = await db.select().from(users).where(eq(users.id, userId));
+    // Get user and verify current password in parallel
+    const [userResult, hashedNewPassword] = await Promise.all([
+      db.select().from(users).where(eq(users.id, userId)),
+      hashPassword(newPassword)
+    ]);
+    
     if (userResult.length === 0) {
       throw new Error('User not found');
     }
+    
     const user = userResult[0];
     const isCurrentPasswordValid = await comparePassword(currentPassword, user.password);
     if (!isCurrentPasswordValid) {
       throw new Error('Current password is incorrect');
     }
-    const hashedNewPassword = await hashPassword(newPassword);
-    await db.update(users)
-      .set({ password: hashedNewPassword, updated_at: new Date() })
-      .where(eq(users.id, userId));
-    await db.update(userTokens)
-      .set({ is_revoked: true })
-      .where(
-        and(
-          eq(userTokens.user_id, userId),
-          eq(userTokens.type, 'refresh')
+    
+    // Update password and revoke tokens in parallel
+    await Promise.all([
+      db.update(users)
+        .set({ password: hashedNewPassword, updated_at: new Date() })
+        .where(eq(users.id, userId)),
+      db.update(userTokens)
+        .set({ is_revoked: true })
+        .where(
+          and(
+            eq(userTokens.user_id, userId),
+            eq(userTokens.type, 'refresh')
+          )
         )
-      );
+    ]);
+    
+    // Clear user cache
+    cache.delete(`user_id_${userId}`);
+    cache.delete(`user_email_${user.email}`);
+    
     return {
       success: true,
       message: 'Password changed successfully',
