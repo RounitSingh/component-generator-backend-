@@ -9,7 +9,10 @@
     "build": "node src/server.js",
     "db:migrate": "drizzle-kit migrate",
     "db:generate": "drizzle-kit generate",
-    "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
+    "db:studio": "drizzle-kit studio --config=drizzle.config.ts",
+    "db:performance": "node scripts/run-migration.js",
+    "db:verify": "node scripts/verify-indexes.js",
+    "performance:test": "node scripts/performance-test.js"
   },
   "keywords": [],
   "author": "",

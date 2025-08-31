@@ -27,6 +27,8 @@ export const chatMessages = pgTable('chat_messages', {
     role: varchar('role', { length: 20 }).notNull(), // 'user' or 'assistant'
     content: text('content').notNull(),
     message_type: varchar('message_type', { length: 500 }).default('text'), // 'text', 'image', 'code'
+    conversation_id: varchar('conversation_id', { length: 255 }), // To group related messages
+    message_order: integer('message_order').default(0), // Order within conversation
     metadata: jsonb('metadata'), // For storing additional data like image URLs, code snippets, etc.
     created_at: timestamp('created_at').defaultNow(),
 });
@@ -51,6 +53,8 @@ export const aiInteractions = pgTable('ai_interactions', {
     response: text('response').notNull(),
     interaction_type: varchar('interaction_type', { length: 50 }).notNull(), // 'component_generation', 'refinement', 'property_edit'
     target_element: varchar('target_element', { length: 255 }), // For targeted modifications
+    conversation_id: varchar('conversation_id', { length: 255 }), // To link with chat messages
+    related_message_id: integer('related_message_id').references(() => chatMessages.id), // Link to specific chat message
     metadata: jsonb('metadata'), // For storing additional context
     created_at: timestamp('created_at').defaultNow(),
 });
@@ -62,6 +66,30 @@ export const userTokens = pgTable('user_tokens', {
     type: varchar('type', { length: 20 }).notNull(), // 'access', 'refresh', 'reset'
     expires_at: timestamp('expires_at').notNull(),
     is_revoked: boolean('is_revoked').default(false),
+    created_at: timestamp('created_at').defaultNow(),
+});
+
+export const conversationSessions = pgTable('conversation_sessions', {
+    id: serial('id').primaryKey(),
+    session_id: integer('session_id').references(() => sessions.id, { onDelete: 'cascade' }).notNull(),
+    conversation_id: varchar('conversation_id', { length: 255 }).notNull(),
+    started_at: timestamp('started_at').defaultNow(),
+    last_activity: timestamp('last_activity').defaultNow(),
+    message_count: integer('message_count').default(0),
+    metadata: jsonb('metadata'),
+});
+
+export const aiResponses = pgTable('ai_responses', {
+    id: serial('id').primaryKey(),
+    session_id: integer('session_id').references(() => sessions.id, { onDelete: 'cascade' }).notNull(),
+    conversation_id: varchar('conversation_id', { length: 255 }).notNull(),
+    user_message_id: integer('user_message_id').references(() => chatMessages.id),
+    prompt_text: text('prompt_text').notNull(),
+    response_text: text('response_text').notNull(),
+    model_name: varchar('model_name', { length: 100 }).default('gemini'),
+    response_time_ms: integer('response_time_ms'),
+    tokens_used: integer('tokens_used'),
+    metadata: jsonb('metadata'),
     created_at: timestamp('created_at').defaultNow(),
 });
 
@@ -79,6 +107,8 @@ export const sessionsRelations = relations(sessions, ({ one, many }) => ({
     chatMessages: many(chatMessages),
     components: many(components),
     aiInteractions: many(aiInteractions),
+    conversationSessions: many(conversationSessions),
+    aiResponses: many(aiResponses),
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
@@ -100,11 +130,33 @@ export const aiInteractionsRelations = relations(aiInteractions, ({ one }) => ({
         fields: [aiInteractions.session_id],
         references: [sessions.id],
     }),
+    relatedMessage: one(chatMessages, {
+        fields: [aiInteractions.related_message_id],
+        references: [chatMessages.id],
+    }),
 }));
 
 export const userTokensRelations = relations(userTokens, ({ one }) => ({
     user: one(users, {
         fields: [userTokens.user_id],
         references: [users.id],
+    }),
+}));
+
+export const conversationSessionsRelations = relations(conversationSessions, ({ one }) => ({
+    session: one(sessions, {
+        fields: [conversationSessions.session_id],
+        references: [sessions.id],
+    }),
+}));
+
+export const aiResponsesRelations = relations(aiResponses, ({ one }) => ({
+    session: one(sessions, {
+        fields: [aiResponses.session_id],
+        references: [sessions.id],
+    }),
+    userMessage: one(chatMessages, {
+        fields: [aiResponses.user_message_id],
+        references: [chatMessages.id],
     }),
 })); 

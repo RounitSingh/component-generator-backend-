@@ -15,6 +15,13 @@
       "when": 1753776121829,
       "tag": "0001_last_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755959691654,
+      "tag": "0002_great_blizzard",
+      "breakpoints": true
     }
   ]
 }
