@@ -3,7 +3,6 @@ import { sendResponse } from '../utils/apiResponse.js';
 import db from '../config/db.js';
 import { sessions } from '../db/schema.js';
 import { and, eq } from 'drizzle-orm';
-import { getJson } from '../config/redis.js';
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -21,18 +20,9 @@ const authMiddleware = async (req, res, next) => {
     // Optional: enforce active session via X-Session-Id
     const sessionId = req.header('X-Session-Id');
     if (sessionId) {
-      // First check Redis cache for fast path
-      let s = null;
-      try {
-        s = await getJson(`session:${sessionId}`);
-      } catch {
-        // ignore cache read errors
-      }
-      if (!s) {
-        const rows = await db.select().from(sessions)
-          .where(and(eq(sessions.id, sessionId), eq(sessions.userId, decoded.userId)));
-        s = rows[0];
-      }
+      const rows = await db.select().from(sessions)
+        .where(and(eq(sessions.id, sessionId), eq(sessions.userId, decoded.userId)));
+      const s = rows[0];
       if (!s || !s.isActive) {
         return sendResponse(res, 401, 'Inactive or invalid session', null);
       }
@@ -56,6 +46,3 @@ const authMiddleware = async (req, res, next) => {
 };
 
 export default authMiddleware;
-
-
-

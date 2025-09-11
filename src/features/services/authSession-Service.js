@@ -2,7 +2,6 @@ import db from '../../config/db.js';
 import { sessions } from '../../db/schema.js';
 import { and, eq, desc } from 'drizzle-orm';
 import { SessionCreateSchema, SessionUpdateSchema } from '../models/session.model.js';
-import { redis, setJson, getJson } from '../../config/redis.js';
 
 // Ensure the session belongs to the user
 export const requireOwnership = async (sessionId, userId) => {
@@ -25,12 +24,6 @@ export const create = async (userId, payload) => {
     deviceInfo: data.deviceInfo ?? null,
     isActive: true,
   }).returning();
-  try {
-    const ttl = Math.max(1, Math.ceil((new Date(data.expiresAt).getTime() - Date.now()) / 1000));
-    await setJson(`session:${row.id}`, { id: row.id, userId, expiresAt: row.expiresAt, isActive: true }, ttl);
-  } catch {
-    // 
-  }
   return row;
 };
 
@@ -53,14 +46,6 @@ export const update = async (id, userId, payload) => {
     ...(data.isActive !== undefined && { isActive: data.isActive }),
     updatedAt: new Date(),
   }).where(eq(sessions.id, id)).returning();
-  try {
-    if (row) {
-      const ttl = row.expiresAt ? Math.max(1, Math.ceil((new Date(row.expiresAt).getTime() - Date.now()) / 1000)) : 3600;
-      await setJson(`session:${row.id}`, { id: row.id, userId: row.userId, expiresAt: row.expiresAt, isActive: row.isActive }, ttl);
-    }
-  } catch {
-    // 
-  }
   return row;
 };
 
@@ -70,9 +55,6 @@ export const revoke = async (id, userId) => {
     .set({ isActive: false, updatedAt: new Date() })
     .where(eq(sessions.id, id))
     .returning();
-  try { await redis.del(`session:${id}`); } catch {
-    // 
-  }
   return row;
 };
 
@@ -83,20 +65,9 @@ export const revokeAll = async (userId, { exceptId = null } = {}) => {
     if (exceptId && s.id === exceptId) continue;
     if (!s.isActive) continue;
     await db.update(sessions).set({ isActive: false, updatedAt: new Date() }).where(eq(sessions.id, s.id));
-    try { await redis.del(`session:${s.id}`); } catch {
-      // 
-    }
     count++;
   }
   return { count };
-};
-
-export const getCachedSession = async (id) => {
-  try {
-    return await getJson(`session:${id}`);
-  } catch {
-    return null;
-  }
 };
 
 

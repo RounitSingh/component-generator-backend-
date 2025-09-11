@@ -8,7 +8,6 @@ import sessionRoutes from "./features/routes/session-Routes.js";
 import conversationRoutes from "./features/routes/conversation-Routes.js";
 import messageRoutes from "./features/routes/message-Routes.js";
 import quotaRoutes from "./features/routes/quota-Routes.js";
-import { connectRedis } from './config/redis.js';
 
 dotenv.config();
 const app = express();
@@ -53,9 +52,6 @@ app.use(
     })
 );
 app.use(cors());
-
-// Initialize Redis connection (non-blocking)
-connectRedis().catch(() => {});
 
 // Routes
 app.use("/api", authRoutes);

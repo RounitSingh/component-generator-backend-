@@ -1,8 +1,6 @@
 import * as AuthService from '../services/auth-Service.js';
 import { sendResponse } from '../../utils/apiResponse.js';
 import { performanceMonitor } from '../../utils/performance.js';
-import { consume as rateLimitConsume } from '../../utils/rateLimit.js';
-import { redis } from '../../config/redis.js';
 
 const buildDeviceInfo = (req, bodyDeviceInfo = {}) => {
   const forwardedFor = req.headers['x-forwarded-for'];
@@ -48,26 +46,8 @@ export const login = async (req, res) => {
   return performanceMonitor.measure('login', async () => {
     try {
       const { email, password, deviceInfo: bodyDeviceInfo } = req.body;
-      // Rate limit by IP and email (simple fixed window)
-      const ip = req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim();
-      const rlKey = `login:${email || 'unknown'}:${ip || 'unknown'}`;
-      const { allowed, retryAfter } = await rateLimitConsume(rlKey, 10, 60);
-      if (!allowed) {
-        res.set('Retry-After', String(retryAfter));
-        return sendResponse(res, 429, 'Too many login attempts, please try again later', null);
-      }
       const deviceInfo = buildDeviceInfo(req, bodyDeviceInfo);
       const result = await AuthService.login({ email, password, deviceInfo });
-      // Cache session basic state in Redis for quick middleware checks
-      try {
-        if (result?.data?.sessionId && result?.data?.expiresAt) {
-          const ttl = Math.max(1, Math.ceil((new Date(result.data.expiresAt).getTime() - Date.now()) / 1000));
-          await redis.set(`session:${result.data.sessionId}`, JSON.stringify({ id: result.data.sessionId, userId: result.data.user.id, isActive: true, expiresAt: result.data.expiresAt }), 'EX', ttl);
-        }
-      } catch {
-
-        // 
-      }
       return sendResponse(res, 200, result.message, result.data);
     } catch (error) {
       return sendResponse(res, 401, error.message, null);

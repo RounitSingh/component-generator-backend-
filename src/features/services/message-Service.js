@@ -1,5 +1,4 @@
 import db from '../../config/db.js';
-import redis, { getJson, setJson } from '../../config/redis.js';
 import { messages, conversations } from '../../db/schema.js';
 import { and, eq, desc, lt } from 'drizzle-orm';
 import { messageModel } from '../models/message.model.js';
@@ -27,7 +26,7 @@ export const create = async (userId, payload) => {
   // Enforce daily quota before creating a message
   await QuotaService.checkAndIncrement(userId);
 
-  const row = await db.transaction(async (tx) => {
+  return await db.transaction(async (tx) => {
     const latest = await tx.select({ v: messages.version })
       .from(messages)
       .where(eq(messages.conversationId, parsed.data.conversationId))
@@ -49,14 +48,6 @@ export const create = async (userId, payload) => {
       .where(eq(conversations.id, parsed.data.conversationId));
     return row;
   });
-  // Invalidate cached pages for this conversation
-  try {
-    const keys = await redis.keys(`msg:list:conv:${row.conversationId}:*`);
-    if (keys?.length) await redis.del(keys);
-  } catch (e) {
-    console.warn('[redis] failed to invalidate message list cache', e?.message || e);
-  }
-  return row;
 };
 
 export const getById = async (userId, id) => {
@@ -74,15 +65,6 @@ export const getById = async (userId, id) => {
 export const listByConversation = async (userId, conversationId, { cursor = null, limit = 50 } = {}) => {
   await requireConversationOwnership(conversationId, userId);
   const take = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100) + 1;
-  const cacheKey = `msg:list:conv:${conversationId}:cursor:${cursor || 'latest'}:take:${take}`;
-  // Try cache
-  try {
-    const cached = await getJson(cacheKey);
-    if (cached) return cached;
-  } catch (e) {
-    console.warn('[redis] failed to read message list cache', e?.message || e);
-  }
-
   let q = db.select().from(messages)
     .where(eq(messages.conversationId, conversationId))
     .orderBy(desc(messages.createdAt))
@@ -97,12 +79,7 @@ export const listByConversation = async (userId, conversationId, { cursor = null
   const hasMore = rows.length === take;
   const items = hasMore ? rows.slice(0, take - 1) : rows;
   const nextCursor = hasMore ? items[items.length - 1].createdAt.toISOString() : null;
-  const payload = { items, nextCursor };
-  // Set cache with short TTL
-  try { await setJson(cacheKey, payload, 60); } catch (e) {
-    console.warn('[redis] failed to set message list cache', e?.message || e);
-  }
-  return payload;
+  return { items, nextCursor };
 };
 
 
