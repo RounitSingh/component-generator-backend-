@@ -25,7 +25,9 @@ const authMiddleware = async (req, res, next) => {
       let s = null;
       try {
         s = await getJson(`session:${sessionId}`);
-      } catch {}
+      } catch {
+        // ignore cache read errors
+      }
       if (!s) {
         const rows = await db.select().from(sessions)
           .where(and(eq(sessions.id, sessionId), eq(sessions.userId, decoded.userId)));
@@ -55,50 +57,5 @@ const authMiddleware = async (req, res, next) => {
 
 export default authMiddleware;
 
-      if (!s || !s.isActive) {
-
-        return sendResponse(res, 401, 'Inactive or invalid session', null);
-
-      }
-
-      if (s.expiresAt && new Date(s.expiresAt) < new Date()) {
-
-        return sendResponse(res, 401, 'Session expired', null);
-
-      }
-
-      req.session = { id: s.id };
-
-    }
-
-
-
-    req.user = { id: decoded.userId, email: decoded.email, role: decoded.role };
-
-    next();
-
-  } catch (error) {
-
-    if (error.name === 'TokenExpiredError') {
-
-      return sendResponse(res, 401, 'Token has expired', null);
-
-    } else if (error.name === 'JsonWebTokenError') {
-
-      return sendResponse(res, 401, 'Invalid token', null);
-
-    } else {
-
-      return sendResponse(res, 500, 'Token verification failed', null);
-
-    }
-
-  }
-
-};
-
-
-
-export default authMiddleware;
 
 
