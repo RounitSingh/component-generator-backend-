@@ -62,10 +62,10 @@ export const comparePassword = async (password, hashedPassword) =>
   await bcrypt.compare(password, hashedPassword);
 
 export const signup = async (userData) => {
-  console.log('🔐 [Signup] Starting signup process for:', userData.email);
+  // console.log('🔐 [Signup] Starting signup process for:', userData.email);
   try {
     const validatedData = signupSchema.parse(userData);
-    console.log('✅ [Signup] Data validation passed');
+    // console.log('✅ [Signup] Data validation passed');
     
     // Check if user exists (with cache)
     const cacheKey = `user_email_${validatedData.email}`;
@@ -78,15 +78,15 @@ export const signup = async (userData) => {
     }
     
     if (existingUser) {
-      console.log('❌ [Signup] User already exists:', validatedData.email)
+      // console.log('❌ [Signup] User already exists:', validatedData.email)
       throw new Error('User with this email already exists');
     }
     
-    console.log('🔑 [Signup] Hashing password...');
+    // console.log('🔑 [Signup] Hashing password...');
     // Hash password first, then create user with hashed password
     const hashedPassword = await hashPassword(validatedData.password);
     
-    console.log('💾 [Signup] Creating user in database...');
+    // console.log('💾 [Signup] Creating user in database...');
     const [newUser] = await db.insert(users).values({
       email: validatedData.email,
       name: validatedData.name,
@@ -101,12 +101,12 @@ export const signup = async (userData) => {
     });
     
     const user = { ...newUser, passwordHash: hashedPassword };
-    console.log('✅ [Signup] User created successfully:', user.id);
+    // console.log('✅ [Signup] User created successfully:', user.id);
     
     // Cache the new user
     setCachedValue(`user_email_${user.email}`, user);
     
-    console.log('🎉 [Signup] Signup completed successfully for:', user.email);
+    // console.log('🎉 [Signup] Signup completed successfully for:', user.email);
     return {
       success: true,
       message: 'User registered successfully. Please login to continue.',
@@ -121,7 +121,7 @@ export const signup = async (userData) => {
       },
     };
   } catch (error) {
-    console.error('❌ [Signup] Error in signup:', error.message);
+    // console.error('❌ [Signup] Error in signup:', error.message);
     if (error instanceof z.ZodError) {
       const messages = Array.isArray(error.errors)
         ? error.errors.map(e => e.message).join(', ')
@@ -133,42 +133,42 @@ export const signup = async (userData) => {
 };
 
 export const login = async (credentials) => {
-  console.log('🔐 [Login] Starting login process for:', credentials.email);
+  // console.log('🔐 [Login] Starting login process for:', credentials.email);
   try {
     const validatedData = loginSchema.parse(credentials);
-    console.log('✅ [Login] Data validation passed');
+    // console.log('✅ [Login] Data validation passed');
     
     // Check cache first
     const cacheKey = `user_email_${validatedData.email}`;
     let user = getCachedValue(cacheKey);
     
     if (!user) {
-      console.log('🔍 [Login] User not in cache, checking database...');
+      // console.log('🔍 [Login] User not in cache, checking database...');
       const userResult = await db.select().from(users).where(eq(users.email, validatedData.email));
       if (userResult.length === 0) {
-        console.log('❌ [Login] User not found:', validatedData.email);
+        // console.log('❌ [Login] User not found:', validatedData.email);
         throw new Error('User not found. Please sign up first.');
       }
       user = userResult[0];
       setCachedValue(cacheKey, user, 2 * 60 * 1000); // Cache for 2 minutes
-      console.log('✅ [Login] User found in database:', user.id);
+      // console.log('✅ [Login] User found in database:', user.id);
     } else {
-      console.log('✅ [Login] User found in cache:', user.id);
+      // console.log('✅ [Login] User found in cache:', user.id);
     }
     
     if (!user.isVerified) {
-      console.log('❌ [Login] Account not verified:', user.email);
+      // console.log('❌ [Login] Account not verified:', user.email);
       throw new Error('Account is not verified. Please contact support or complete verification.');
     }
     
-    console.log('🔑 [Login] Verifying password...');
+    // console.log('🔑 [Login] Verifying password...');
     // Verify password
     const isPasswordValid = await comparePassword(validatedData.password, user.passwordHash);
     if (!isPasswordValid) {
-      console.log('❌ [Login] Invalid password for:', user.email);
+      // console.log('❌ [Login] Invalid password for:', user.email);
       throw new Error('Invalid password. Please try again.');
     }
-    console.log('✅ [Login] Password verified');
+    // console.log('✅ [Login] Password verified');
     
     // Generate tokens and save refresh token in parallel
     const [accessToken, refreshTokenData] = await Promise.all([
@@ -176,7 +176,7 @@ export const login = async (credentials) => {
       generateRefreshToken(user.id)
     ]);
     
-    console.log('🔐 [Login] Creating session...');
+    // console.log('🔐 [Login] Creating session...');
     // Save refresh token as a session and get the session ID
     const [sessionRow] = await db.insert(sessions).values({
       userId: user.id,
@@ -186,12 +186,12 @@ export const login = async (credentials) => {
       isActive: true,
     }).returning({ id: sessions.id });
     
-    console.log('✅ [Login] Session created:', sessionRow.id);
+    // console.log('✅ [Login] Session created:', sessionRow.id);
     
     // Cleanup expired tokens in background (non-blocking)
     setImmediate(() => cleanupExpiredTokens());
     
-    console.log('🎉 [Login] Login completed successfully for:', user.email);
+    // console.log('🎉 [Login] Login completed successfully for:', user.email);
     return {
       success: true,
       message: 'Login successful',
@@ -209,7 +209,7 @@ export const login = async (credentials) => {
       },
     };
   } catch (error) {
-    console.error('❌ [Login] Error in login:', error.message);
+    // console.error('❌ [Login] Error in login:', error.message);
     if (error instanceof z.ZodError) {
       throw new Error(`Validation error: ${error.errors.map(e => e.message).join(', ')}`);
     }
@@ -261,7 +261,7 @@ export const refreshToken = async ({ refreshToken, sessionId }) => {
       },
     };
   } catch (error) {
-    console.error('Error refreshing token:', error);
+     console.error('Error refreshing token:', error);
     throw new Error('Invalid refresh token');
   }
 };
@@ -276,7 +276,7 @@ export const logout = async ({ refreshToken, sessionId }) => {
       message: 'Logout successful',
     };
   } catch (error) {
-    console.error('Error during logout:', error);
+     console.error('Error during logout:', error);
     throw new Error('Logout failed');
   }
 };
@@ -304,7 +304,7 @@ export const verifyToken = async (token) => {
       decoded,
     };
   } catch (error) {
-    console.error('Error verifying token:', error);
+     console.error('Error verifying token:', error);
     throw new Error('Invalid token');
   }
 };
@@ -384,7 +384,7 @@ export const cleanupExpiredTokens = async () => {
       .set({ isActive: false })
       .where(lt(sessions.expiresAt, new Date()));
   } catch (error) {
-    console.error('Error cleaning up expired tokens:', error);
+     console.error('Error cleaning up expired tokens:', error);
   }
 };
 

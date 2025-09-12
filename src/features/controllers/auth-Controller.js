@@ -18,7 +18,7 @@ const buildDeviceInfo = (req, bodyDeviceInfo = {}) => {
 
 export const signup = async (req, res) => {
   return performanceMonitor.measure('signup', async () => {
-    // console.log('Received signup request:', req.body);
+    // // console.log('Received signup request:', req.body);
     try {
       const { email, password, name, deviceInfo: bodyDeviceInfo } = req.body;
       const deviceInfo = buildDeviceInfo(req, bodyDeviceInfo);
@@ -26,7 +26,7 @@ export const signup = async (req, res) => {
       // result.data should include { accessToken, sessionId }
       return sendResponse(res, 201, result.message, result.data);
     } catch (error) {
-      // console.error('Signup failed:', error);
+      // // console.error('Signup failed:', error);
       return sendResponse(res, 400, error.message, null);
     }
   });

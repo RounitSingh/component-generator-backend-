@@ -1,7 +1,7 @@
 import db from '../../config/db.js';
 import { quotas } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { QuotaCreateSchema, QuotaUpdateSchema } from '../models/quota.model.js';
+import {  QuotaUpdateSchema } from '../models/quota.model.js';
 
 const nextMidnightUtc = () => {
   const now = new Date();

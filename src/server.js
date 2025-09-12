@@ -13,6 +13,6 @@ app.listen(PORT, () => {
         console.log(chalk.blue.bold(banner));
         console.log(chalk.yellow.bold(`🚀 Server is live at http://localhost:${PORT}`));
     } catch (error) {
-        console.error(chalk.red.bold("❌ Error displaying banner"), error);
+         console.error(chalk.red.bold("❌ Error displaying banner"), error);
     }
 }); 

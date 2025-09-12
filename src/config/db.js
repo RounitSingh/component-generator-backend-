@@ -12,7 +12,7 @@ const pool = new Pool({
   // Optimized pool settings for production
   max: isProduction ? 20 : 10, // Maximum number of clients in the pool
   min: isProduction ? 5 : 2,  // Minimum number of clients in the pool
-  idle: 30000, // How long a client is allowed to remain idle before being closed
+  idle: 30000, 
   acquire: 60000, // Maximum time to acquire a client from the pool
   // SSL configuration for production
   ...(isProduction && {
@@ -26,7 +26,7 @@ const pool = new Pool({
 const db = drizzle(pool, { 
   schema,
   // Enable query logging in development
-  logger: !isProduction,
+  // logger: !isProduction,
 });
 
 // Test database connection

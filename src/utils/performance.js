@@ -9,7 +9,7 @@ export const performanceMonitor = {
   end(label) {
     const startTime = this.timers.get(label);
     if (!startTime) {
-      console.warn(`Timer '${label}' not found`);
+      // console.warn(`Timer '${label}' not found`);
       return;
     }
     
@@ -17,7 +17,7 @@ export const performanceMonitor = {
     const duration = Number(endTime - startTime) / 1000000; // Convert to milliseconds
     this.timers.delete(label);
     
-    console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
+    // console.log(`⏱️  ${label}: ${duration.toFixed(2)}ms`);
     return duration;
   },
   
@@ -42,7 +42,7 @@ export const performanceMiddleware = (req, res, next) => {
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1000000;
     
-    console.log(`🚀 ${req.method} ${req.path}: ${duration.toFixed(2)}ms - ${res.statusCode}`);
+    // console.log(`🚀 ${req.method} ${req.path}: ${duration.toFixed(2)}ms - ${res.statusCode}`);
   });
   
   next();
