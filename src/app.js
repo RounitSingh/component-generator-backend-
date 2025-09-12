@@ -5,6 +5,9 @@ import cors from "cors";
 import chalk from "chalk";
 import authRoutes from "./features/routes/auth-Routes.js";
 import sessionRoutes from "./features/routes/session-Routes.js";
+import conversationRoutes from "./features/routes/conversation-Routes.js";
+import messageRoutes from "./features/routes/message-Routes.js";
+import quotaRoutes from "./features/routes/quota-Routes.js";
 
 dotenv.config();
 const app = express();
@@ -53,5 +56,8 @@ app.use(cors());
 // Routes
 app.use("/api", authRoutes);
 app.use("/api", sessionRoutes);
+app.use("/api", conversationRoutes);
+app.use("/api", messageRoutes);
+app.use("/api", quotaRoutes);
 
 export default app; 

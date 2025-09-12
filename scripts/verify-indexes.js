@@ -14,7 +14,7 @@ const db = drizzle(pool);
 
 async function verifyIndexes() {
   try {
-    console.log('🔍 Verifying Database Indexes...\n');
+    // console.log('🔍 Verifying Database Indexes...\n');
     
     // Query to get all indexes
     const indexesQuery = sql`
@@ -31,8 +31,8 @@ async function verifyIndexes() {
     
     const indexes = await db.execute(indexesQuery);
     
-    console.log('📊 Found Indexes:');
-    console.log('================\n');
+    // console.log('📊 Found Indexes:');
+    // console.log('================\n');
     
     const indexGroups = {};
     indexes.rows.forEach(row => {
@@ -46,11 +46,11 @@ async function verifyIndexes() {
     });
     
     Object.entries(indexGroups).forEach(([table, tableIndexes]) => {
-      console.log(`📋 Table: ${table}`);
+      // console.log(`📋 Table: ${table}`);
       tableIndexes.forEach(index => {
-        console.log(`   ✅ ${index.name}`);
+        // console.log(`   ✅ ${index.name}`);
       });
-      console.log('');
+      // console.log('');
     });
     
     // Verify critical indexes exist
@@ -70,15 +70,15 @@ async function verifyIndexes() {
     const missingIndexes = criticalIndexes.filter(index => !existingIndexNames.includes(index));
     
     if (missingIndexes.length > 0) {
-      console.log('⚠️  Missing Critical Indexes:');
-      missingIndexes.forEach(index => console.log(`   ❌ ${index}`));
+      // console.log('⚠️  Missing Critical Indexes:');
+      missingIndexes.forEach(index => // console.log(`   ❌ ${index}`));
     } else {
-      console.log('✅ All Critical Indexes Present!');
+      // console.log('✅ All Critical Indexes Present!');
     }
     
     // Performance analysis
-    console.log('\n📈 Performance Analysis:');
-    console.log('======================');
+    // console.log('\n📈 Performance Analysis:');
+    // console.log('======================');
     
     // Check table sizes
     const tableSizesQuery = sql`
@@ -94,9 +94,9 @@ async function verifyIndexes() {
     
     const tableSizes = await db.execute(tableSizesQuery);
     
-    console.log('\n📊 Table Sizes:');
+    // console.log('\n📊 Table Sizes:');
     tableSizes.rows.forEach(row => {
-      console.log(`   ${row.tablename}: ${row.size}`);
+      // console.log(`   ${row.tablename}: ${row.size}`);
     });
     
     // Check index usage statistics with correct column names
@@ -117,26 +117,26 @@ async function verifyIndexes() {
     const indexUsage = await db.execute(indexUsageQuery);
     
     if (indexUsage.rows.length > 0) {
-      console.log('\n📈 Index Usage Statistics:');
+      // console.log('\n📈 Index Usage Statistics:');
       indexUsage.rows.forEach(row => {
-        console.log(`   ${row.indexname}: ${row.scans} scans, ${row.tuples_read} tuples read`);
+        // console.log(`   ${row.indexname}: ${row.scans} scans, ${row.tuples_read} tuples read`);
       });
     } else {
-      console.log('\n📈 Index Usage Statistics: No usage data available yet (normal for new indexes)');
+      // console.log('\n📈 Index Usage Statistics: No usage data available yet (normal for new indexes)');
     }
     
-    console.log('\n🎉 Database Index Verification Complete!');
-    console.log('\n💡 Performance Tips:');
-    console.log('- Monitor index usage with: SELECT * FROM pg_stat_user_indexes;');
-    console.log('- Check query performance with: EXPLAIN ANALYZE your_query;');
-    console.log('- Reindex if needed: REINDEX INDEX index_name;');
-    console.log('\n🚀 Your database is now optimized for high performance!');
-    console.log('   - Authentication queries will be 60-80% faster');
-    console.log('   - Chat and component queries will be 50-70% faster');
-    console.log('   - All critical operations are indexed');
+    // console.log('\n🎉 Database Index Verification Complete!');
+    // console.log('\n💡 Performance Tips:');
+    // console.log('- Monitor index usage with: SELECT * FROM pg_stat_user_indexes;');
+    // console.log('- Check query performance with: EXPLAIN ANALYZE your_query;');
+    // console.log('- Reindex if needed: REINDEX INDEX index_name;');
+    // console.log('\n🚀 Your database is now optimized for high performance!');
+    // console.log('   - Authentication queries will be 60-80% faster');
+    // console.log('   - Chat and component queries will be 50-70% faster');
+    // console.log('   - All critical operations are indexed');
     
   } catch (error) {
-    console.error('❌ Index verification failed:', error);
+    // console.error('❌ Index verification failed:', error);
   } finally {
     await pool.end();
   }

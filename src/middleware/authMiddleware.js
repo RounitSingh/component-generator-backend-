@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
-import { sendResponse } from '../utils/response.js';
+import { sendResponse } from '../utils/apiResponse.js';
+import db from '../config/db.js';
+import { sessions } from '../db/schema.js';
+import { and, eq } from 'drizzle-orm';
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -9,18 +12,27 @@ const authMiddleware = async (req, res, next) => {
       return sendResponse(res, 401, 'Access token is required', null);
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    const token = authHeader.substring(7);
     const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
 
     const decoded = jwt.verify(token, jwtSecret);
 
-    // Add user info to request
-    req.user = {
-      id: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-    };
+    // Optional: enforce active session via X-Session-Id
+    const sessionId = req.header('X-Session-Id');
+    if (sessionId) {
+      const rows = await db.select().from(sessions)
+        .where(and(eq(sessions.id, sessionId), eq(sessions.userId, decoded.userId)));
+      const s = rows[0];
+      if (!s || !s.isActive) {
+        return sendResponse(res, 401, 'Inactive or invalid session', null);
+      }
+      if (s.expiresAt && new Date(s.expiresAt) < new Date()) {
+        return sendResponse(res, 401, 'Session expired', null);
+      }
+      req.session = { id: s.id };
+    }
 
+    req.user = { id: decoded.userId, email: decoded.email, role: decoded.role };
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
