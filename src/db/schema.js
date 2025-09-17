@@ -66,6 +66,22 @@ export const messages = pgTable("messages", {
     jsonbPathIdx: index("messages_data_idx").using("gin", table.data), // fast JSON search
   }));
   
+  // COMPONENTS (artifacts associated to a conversation or specific message)
+  export const components = pgTable("components", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    conversationId: uuid("conversation_id").notNull().references(() => conversations.id),
+    messageId: uuid("message_id").references(() => messages.id),
+    type: text("type").notNull(),
+    data: jsonb("data").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  }, (table) => ({
+    convoIdx: index("components_conversation_id_idx").on(table.conversationId),
+    convoTimeIdx: index("components_convo_created_idx").on(table.conversationId, table.createdAt),
+    typeIdx: index("components_type_idx").on(table.type),
+    jsonbPathIdx: index("components_data_idx").using("gin", table.data),
+  }));
+  
   // QUOTAS
   export const quotas = pgTable("quotas", {
     id: uuid("id").defaultRandom().primaryKey(),

@@ -13,8 +13,13 @@ export const createConversation = async (req, res) => {
 
 export const listConversations = async (req, res) => {
   try {
-    const items = await ConversationService.listMine(req.user.id);
-    return sendResponse(res, 200, 'Conversations retrieved', items);
+    const { cursor, limit, activeOnly } = req.query;
+    const { items, nextCursor } = await ConversationService.listMine(req.user.id, {
+      cursor: cursor || null,
+      limit: limit || 10,
+      activeOnly: activeOnly === 'true',
+    });
+    return sendResponse(res, 200, 'Conversations retrieved', { items }, null, { nextCursor });
   } catch (err) {
     return handleError(res, err, 'Failed to fetch conversations');
   }
@@ -22,6 +27,12 @@ export const listConversations = async (req, res) => {
 
 export const getConversation = async (req, res) => {
   try {
+    const include = req.query.include || 'summary';
+    if (include === 'details') {
+      const messagesLimit = req.query.messagesLimit ? parseInt(req.query.messagesLimit, 10) : undefined;
+      const details = await ConversationService.getDetails(req.params.id, req.user.id, { messagesLimit });
+      return sendResponse(res, 200, 'Conversation details retrieved', details);
+    }
     const row = await ConversationService.getById(req.params.id, req.user.id);
     return sendResponse(res, 200, 'Conversation retrieved', row);
   } catch (err) {

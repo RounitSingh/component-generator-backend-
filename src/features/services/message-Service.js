@@ -42,9 +42,19 @@ export const create = async (userId, payload) => {
       isEdited: parsed.data.isEdited ?? false,
       version: nextVersion,
     }).returning();
-    // Bump conversation updatedAt so conversation ordering reflects recent activity
+    // Auto-title: if conversation has no title and this is the first user text message, set a title
+    const convoRows = await tx.select().from(conversations).where(eq(conversations.id, parsed.data.conversationId));
+    const convo = convoRows[0];
+    let maybeTitle = null;
+    if (!convo.title && parsed.data.role === 'user' && parsed.data.type === 'text') {
+      const content = typeof parsed.data.data === 'string' ? parsed.data.data : (parsed.data.data?.content || '');
+      if (content) {
+        const trimmed = content.trim().replace(/\s+/g, ' ');
+        maybeTitle = trimmed.slice(0, 60);
+      }
+    }
     await tx.update(conversations)
-      .set({ updatedAt: new Date() })
+      .set({ updatedAt: new Date(), ...(maybeTitle && { title: maybeTitle }) })
       .where(eq(conversations.id, parsed.data.conversationId));
     return row;
   });
