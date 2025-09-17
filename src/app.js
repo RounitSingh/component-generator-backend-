@@ -7,6 +7,7 @@ import authRoutes from "./features/routes/auth-Routes.js";
 import sessionRoutes from "./features/routes/session-Routes.js";
 import conversationRoutes from "./features/routes/conversation-Routes.js";
 import messageRoutes from "./features/routes/message-Routes.js";
+import componentRoutes from "./features/routes/component-Routes.js";
 import quotaRoutes from "./features/routes/quota-Routes.js";
 
 dotenv.config();
@@ -58,6 +59,7 @@ app.use("/api", authRoutes);
 app.use("/api", sessionRoutes);
 app.use("/api", conversationRoutes);
 app.use("/api", messageRoutes);
+app.use("/api", componentRoutes);
 app.use("/api", quotaRoutes);
 
 export default app; 
