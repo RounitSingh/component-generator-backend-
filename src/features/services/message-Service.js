@@ -42,15 +42,25 @@ export const create = async (userId, payload) => {
       isEdited: parsed.data.isEdited ?? false,
       version: nextVersion,
     }).returning();
-    // Auto-title: if conversation has no title and this is the first user text message, set a title
+    // Auto-title: if conversation has no title or has generic title and this is the first user text message, set a title
     const convoRows = await tx.select().from(conversations).where(eq(conversations.id, parsed.data.conversationId));
     const convo = convoRows[0];
     let maybeTitle = null;
-    if (!convo.title && parsed.data.role === 'user' && parsed.data.type === 'text') {
+    
+    // Check if this is a user text message and conversation needs a title
+    const needsTitle = !convo.title || 
+                      convo.title === 'untitled' || 
+                      convo.title === 'New Chat' || 
+                      convo.title === 'untitled' ||
+                      convo.title === 'New Chat';
+    
+    if (needsTitle && parsed.data.role === 'user' && parsed.data.type === 'text') {
       const content = typeof parsed.data.data === 'string' ? parsed.data.data : (parsed.data.data?.content || '');
-      if (content) {
-        const trimmed = content.trim().replace(/\s+/g, ' ');
-        maybeTitle = trimmed.slice(0, 60);
+      if (content && content.trim().length > 0) {
+        // Clean up the content and create a meaningful title
+        const cleaned = content.trim().replace(/\s+/g, ' ');
+        // Take first 50 characters and add ellipsis if longer
+        maybeTitle = cleaned.length > 50 ? cleaned.slice(0, 50) + '...' : cleaned;
       }
     }
     await tx.update(conversations)

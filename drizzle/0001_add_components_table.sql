@@ -18,3 +18,8 @@ CREATE INDEX IF NOT EXISTS components_data_idx ON components USING GIN (data);
 
 
 
+
+
+
+
+
