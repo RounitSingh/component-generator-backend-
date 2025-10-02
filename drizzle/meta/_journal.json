@@ -15,6 +15,13 @@
       "when": 1758095427671,
       "tag": "0001_big_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759229025898,
+      "tag": "0002_hesitant_loki",
+      "breakpoints": true
     }
   ]
 }

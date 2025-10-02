@@ -82,6 +82,38 @@ export const messages = pgTable("messages", {
     jsonbPathIdx: index("components_data_idx").using("gin", table.data),
   }));
   
+  // SNAPSHOTS (immutable capture of a component's render data)
+  export const snapshots = pgTable("snapshots", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ownerId: uuid("owner_id").notNull().references(() => users.id),
+    conversationId: uuid("conversation_id").notNull().references(() => conversations.id),
+    componentId: uuid("component_id").notNull().references(() => components.id),
+    data: jsonb("data").notNull(), // { jsx: string, css: string, meta?: {} }
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  }, (table) => ({
+    ownerIdx: index("snapshots_owner_id_idx").on(table.ownerId),
+    convoIdx: index("snapshots_conversation_id_idx").on(table.conversationId),
+    componentIdx: index("snapshots_component_id_idx").on(table.componentId),
+    createdIdx: index("snapshots_created_at_idx").on(table.createdAt),
+  }));
+
+  // SHARE LINKS (public, unlisted links to snapshots)
+  export const shareLinks = pgTable("share_links", {
+    id: uuid("id").defaultRandom().primaryKey(),
+    snapshotId: uuid("snapshot_id").notNull().references(() => snapshots.id),
+    slug: text("slug").notNull(), // unguessable token
+    expiresAt: timestamp("expires_at"),
+    revokedAt: timestamp("revoked_at"),
+    viewCount: integer("view_count").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  }, (table) => ({
+    slugUniqueIdx: uniqueIndex("share_links_slug_idx").on(table.slug),
+    snapshotIdx: index("share_links_snapshot_id_idx").on(table.snapshotId),
+    expiresIdx: index("share_links_expires_at_idx").on(table.expiresAt),
+    revokedIdx: index("share_links_revoked_at_idx").on(table.revokedAt),
+  }));
+  
   // QUOTAS
   export const quotas = pgTable("quotas", {
     id: uuid("id").defaultRandom().primaryKey(),
