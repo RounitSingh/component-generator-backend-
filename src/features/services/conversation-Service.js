@@ -91,6 +91,28 @@ export const archive = async (id, userId) => {
   return row;
 };
 
+export const unarchive = async (id, userId) => {
+  await requireOwnership(id, userId);
+  const [row] = await db.update(conversations)
+    .set({ isActive: true, updatedAt: new Date() })
+    .where(eq(conversations.id, id))
+    .returning();
+  return row;
+};
+
+export const deleteConversation = async (id, userId) => {
+  await requireOwnership(id, userId);
+  // First delete all related messages
+  await db.delete(messages).where(eq(messages.conversationId, id));
+  // Then delete all related components
+  await db.delete(components).where(eq(components.conversationId, id));
+  // Finally delete the conversation
+  const [row] = await db.delete(conversations)
+    .where(eq(conversations.id, id))
+    .returning();
+  return row;
+};
+
 
 
 

@@ -61,6 +61,26 @@ export const archiveConversation = async (req, res) => {
   }
 };
 
+export const unarchiveConversation = async (req, res) => {
+  try {
+    const row = await ConversationService.unarchive(req.params.id, req.user.id);
+    return sendResponse(res, 200, 'Conversation unarchived', row);
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return sendResponse(res, 404, 'Conversation not found', null);
+    return handleError(res, err, 'Failed to unarchive conversation');
+  }
+};
+
+export const deleteConversation = async (req, res) => {
+  try {
+    const row = await ConversationService.deleteConversation(req.params.id, req.user.id);
+    return sendResponse(res, 200, 'Conversation deleted', row);
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return sendResponse(res, 404, 'Conversation not found', null);
+    return handleError(res, err, 'Failed to delete conversation');
+  }
+};
+
 
 
 

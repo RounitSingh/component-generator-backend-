@@ -10,7 +10,9 @@ router.post('/conversations', ConversationController.createConversation);
 router.get('/conversations', ConversationController.listConversations);
 router.get('/conversations/:id', ConversationController.getConversation);
 router.patch('/conversations/:id', ConversationController.updateConversation);
-router.delete('/conversations/:id', ConversationController.archiveConversation);
+router.patch('/conversations/:id/archive', ConversationController.archiveConversation);
+router.patch('/conversations/:id/unarchive', ConversationController.unarchiveConversation);
+router.delete('/conversations/:id', ConversationController.deleteConversation);
 
 export default router;
 
