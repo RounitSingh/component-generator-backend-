@@ -81,6 +81,19 @@ export const deleteConversation = async (req, res) => {
   }
 };
 
+export const bulkDeleteConversations = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return sendResponse(res, 400, 'Invalid request: ids must be a non-empty array', null);
+    }
+    const result = await ConversationService.bulkDeleteConversations(ids, req.user.id);
+    return sendResponse(res, 200, `Deleted ${result.deletedCount} conversation(s)`, result);
+  } catch (err) {
+    return handleError(res, err, 'Failed to bulk delete conversations');
+  }
+};
+
 
 
 
